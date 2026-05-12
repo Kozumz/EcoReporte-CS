@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python3 -c \"import ast; files = ['scripts/setup.py','scripts/destroy.py','demo.py','demo_profesor/setup_interactivo.py']; [print\\(f'✅ {f}'\\) or ast.parse\\(open\\(f\\).read\\(\\)\\) for f in files]\")",
-      "Bash(python3 -c ' *)"
-    ]
-  }
-}
