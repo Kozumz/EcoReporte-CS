@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#14241E" />
+<title>EcoReporte Ciudadano — Mapa cívico ambiental</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+<style>
+  /* ============================================
+     DESIGN TOKENS
+     ============================================ */
+  :root {
+    --moss-950: #0E1B16; --moss-900: #14241E; --moss-800: #1D362C;
+    --moss-700: #2B5345; --moss-600: #3A6E5A; --moss-500: #4A8B6F;
+    --moss-400: #7FB495; --moss-300: #B8D8C5; --moss-100: #E4F0E8; --moss-50: #F1F7F3;
+    --leaf-500: #5DAA6F; --leaf-400: #7BC58A;
+    --clay-700: #8E4F33; --clay-500: #B86D4A; --clay-300: #E2A78A; --clay-100: #F4E3D8;
+    --sky-500: #3B82B5; --sky-100: #DCEAF3;
+    --amber-500: #C98A2E; --amber-100: #F5E6CC;
+    --ruby-500: #B84A4A; --ruby-100: #F2D9D9;
+    --paper: #FBF9F3; --sand-100: #F5F1E8; --sand-200: #ECE7D6;
+    --line-soft: #E4DFD0; --line: #D4CFBE;
+    --ink-900: #1A2520; --ink-700: #2E3A35; --ink-500: #6B756F;
+    --ink-400: #8C948E; --ink-300: #B5BAB5;
+    --cat-basura: #6B5E4C; --cat-derrame: #3B82B5;
+    --cat-quema: #C45A2E; --cat-tala: #2B5345; --cat-otro: #7A5B8E;
+    --font-display: "Instrument Serif", "Georgia", serif;
+    --font-ui: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --radius-xs: 6px; --radius-sm: 10px; --radius-md: 14px;
+    --radius-lg: 20px; --radius-xl: 28px;
+    --shadow-sm: 0 1px 2px rgba(20,36,30,.06), 0 1px 1px rgba(20,36,30,.04);
+    --shadow-md: 0 4px 12px -2px rgba(20,36,30,.10), 0 2px 4px rgba(20,36,30,.05);
+    --shadow-lg: 0 18px 40px -12px rgba(20,36,30,.22), 0 4px 12px rgba(20,36,30,.08);
+    --shadow-xl: 0 30px 60px -20px rgba(20,36,30,.30);
+    --shadow-fab: 0 12px 28px -6px rgba(58,110,90,.45), 0 4px 10px rgba(20,36,30,.18);
+    --header-h: 64px; --side-w: 400px; --bottom-collapsed: 96px;
+    --ease: cubic-bezier(.4,0,.2,1); --ease-out: cubic-bezier(.16,1,.3,1);
+  }
+
+  /* ============================================
+     RESET + BASE
+     ============================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+    color: var(--ink-900); background: var(--paper);
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; padding: 0; margin: 0; cursor: pointer; }
+  input, textarea, select { font: inherit; color: inherit; }
+  ::selection { background: var(--moss-300); color: var(--moss-900); }
+
+  /* ============================================
+     APP LAYOUT
+     ============================================ */
+  .app { display: grid; grid-template-rows: var(--header-h) 1fr; height: 100vh; height: 100dvh; background: var(--sand-100); }
+
+  /* ============================================
+     HEADER
+     ============================================ */
+  .header {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 0 22px; background: var(--moss-900); color: var(--paper);
+    border-bottom: 1px solid var(--moss-950); position: relative; z-index: 30;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand__mark {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: radial-gradient(circle at 30% 30%, var(--leaf-400), var(--moss-500) 55%, var(--moss-800) 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 2px 6px rgba(0,0,0,.25); position: relative;
+  }
+  .brand__mark::after {
+    content: ""; position: absolute; inset: 9px; border-radius: 50%;
+    border: 1.5px solid rgba(251,249,243,.85);
+    border-right-color: transparent; border-bottom-color: transparent; transform: rotate(45deg);
+  }
+  .brand__text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+  .brand__name { font-family: var(--font-display); font-size: 22px; letter-spacing: .2px; white-space: nowrap; }
+  .brand__name em { font-style: italic; color: var(--moss-300); font-weight: 400; }
+  .brand__tag { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--moss-300); margin-top: 2px; }
+  .header__nav { display: flex; align-items: center; gap: 6px; }
+  .header__chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px;
+    border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+    font-size: 12.5px; font-weight: 500; color: var(--moss-100);
+  }
+  .header__chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--leaf-400); box-shadow: 0 0 0 3px rgba(123,197,138,.18); }
+  .header__btn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; color: var(--moss-100); transition: background .2s var(--ease); }
+  .header__btn:hover { background: rgba(255,255,255,.08); }
+  .header__btn svg { width: 18px; height: 18px; }
+  .header__avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--clay-300), var(--clay-500)); display: grid; place-items: center; color: var(--paper); font-weight: 700; font-size: 13px; border: 1.5px solid var(--moss-800); }
+
+  /* ============================================
+     MAIN GRID
+     ============================================ */
+  .main { display: grid; grid-template-columns: 1fr var(--side-w); min-height: 0; position: relative; }
+
+  /* ============================================
+     MAP
+     ============================================ */
+  .map-wrap { position: relative; min-height: 0; background: var(--sand-200); }
+  #map { width: 100%; height: 100%; background: var(--sand-200); }
+  .map-overlay { position: absolute; top: 16px; left: 16px; z-index: 600; display: flex; flex-direction: column; gap: 10px; max-width: calc(100% - 32px); }
+  .search {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px 11px 12px;
+    background: var(--paper); border-radius: 999px; border: 1px solid var(--line-soft);
+    box-shadow: var(--shadow-md); width: 360px; max-width: 100%;
+  }
+  .search svg { width: 16px; height: 16px; color: var(--ink-500); flex-shrink: 0; }
+  .search input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; min-width: 0; }
+  .search input::placeholder { color: var(--ink-400); }
+  .search__kbd { font-family: var(--font-ui); font-size: 10px; font-weight: 600; color: var(--ink-500); padding: 3px 6px; border-radius: 4px; background: var(--sand-100); border: 1px solid var(--line-soft); }
+  .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px; background: var(--paper); border-radius: var(--radius-lg); border: 1px solid var(--line-soft); box-shadow: var(--shadow-md); }
+  .filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ink-700); background: transparent; border: 1px solid transparent; transition: all .15s var(--ease); white-space: nowrap; }
+  .filter-chip:hover { background: var(--sand-100); }
+  .filter-chip.is-active { background: var(--moss-900); color: var(--paper); }
+  .filter-chip__dot { width: 8px; height: 8px; border-radius: 50%; }
+  .filter-chip__count { font-variant-numeric: tabular-nums; opacity: .65; margin-left: 2px; }
+  .map-controls { position: absolute; top: 16px; right: 16px; z-index: 600; display: flex; flex-direction: column; gap: 8px; }
+  .map-btn { width: 40px; height: 40px; display: grid; place-items: center; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 12px; box-shadow: var(--shadow-md); color: var(--ink-700); transition: transform .15s var(--ease), background .15s var(--ease); }
+  .map-btn:hover { background: var(--moss-50); }
+  .map-btn:active { transform: scale(.94); }
+  .map-btn svg { width: 18px; height: 18px; }
+  .map-btn--group { display: flex; flex-direction: column; padding: 0; width: 40px; background: var(--paper); border: 1px solid var(--line-soft); border-radius: 12px; box-shadow: var(--shadow-md); overflow: hidden; }
+  .map-btn--group button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--ink-700); }
+  .map-btn--group button + button { border-top: 1px solid var(--line-soft); }
+  .map-btn--group button:hover { background: var(--moss-50); }
+  .map-stats { position: absolute; bottom: 22px; left: 16px; z-index: 600; display: flex; gap: 14px; background: var(--paper); border: 1px solid var(--line-soft); border-radius: var(--radius-md); padding: 12px 16px; box-shadow: var(--shadow-md); }
+  .map-stat__num { font-family: var(--font-display); font-size: 26px; line-height: 1; color: var(--moss-800); font-variant-numeric: tabular-nums; }
+  .map-stat__label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-500); margin-top: 4px; }
+  .map-stat__divider { width: 1px; background: var(--line-soft); margin: 4px 2px; }
+
+  /* Pin marker */
+  .pin { width: 34px; height: 34px; position: relative; display: grid; place-items: center; filter: drop-shadow(0 4px 6px rgba(20,36,30,.25)); }
+  .pin__body { width: 30px; height: 30px; border-radius: 50% 50% 50% 4px; transform: rotate(-45deg); background: var(--moss-700); border: 2px solid var(--paper); display: grid; place-items: center; }
+  .pin__icon { transform: rotate(45deg); font-size: 14px; line-height: 1; }
+  .pin--basura .pin__body  { background: var(--cat-basura); }
+  .pin--derrame .pin__body { background: var(--cat-derrame); }
+  .pin--quema .pin__body   { background: var(--cat-quema); }
+  .pin--tala .pin__body    { background: var(--cat-tala); }
+  .pin--otro .pin__body    { background: var(--cat-otro); }
+
+  /* Popup */
+  .leaflet-popup-content-wrapper { border-radius: var(--radius-md); background: var(--paper); box-shadow: var(--shadow-lg); padding: 0; }
+  .leaflet-popup-content { margin: 0; width: 240px !important; }
+  .leaflet-popup-tip { background: var(--paper); }
+  .popup { padding: 14px 16px; }
+  .popup__cat { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+  .popup__title { font-family: var(--font-display); font-size: 17px; line-height: 1.2; color: var(--ink-900); margin: 6px 0 8px; }
+  .popup__meta { font-size: 12px; color: var(--ink-500); }
+  .popup__photo { width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px; margin: 8px 0; display: block; }
+  .popup__status { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 3px 8px; border-radius: 999px; margin-top: 8px; }
+  .leaflet-control-attribution { font-size: 10px !important; background: rgba(251,249,243,.85) !important; }
+
+  /* ============================================
+     SIDE PANEL
+     ============================================ */
+  .side { background: var(--paper); border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; min-height: 0; z-index: 10; }
+  .side__header { padding: 18px 22px 12px; border-bottom: 1px solid var(--line-soft); background: var(--paper); flex-shrink: 0; }
+  .side__eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .16em; color: var(--moss-600); font-weight: 700; }
+  .side__title { font-family: var(--font-display); font-size: 28px; line-height: 1.1; margin: 4px 0 12px; color: var(--moss-900); }
+  .side__title em { font-style: italic; color: var(--clay-500); }
+  .side__tabs { display: flex; gap: 2px; background: var(--sand-100); padding: 4px; border-radius: 10px; margin-top: 4px; }
+  .side__tab { flex: 1; padding: 8px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-500); border-radius: 7px; text-align: center; transition: all .15s var(--ease); }
+  .side__tab:hover { color: var(--ink-700); }
+  .side__tab.is-active { background: var(--paper); color: var(--moss-900); box-shadow: var(--shadow-sm); }
+  .side__tab span { font-size: 10px; margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: var(--sand-200); color: var(--ink-500); font-variant-numeric: tabular-nums; }
+  .side__tab.is-active span { background: var(--moss-100); color: var(--moss-700); }
+  .side__body { flex: 1; overflow-y: auto; padding: 14px 16px 100px; scroll-behavior: smooth; }
+  .side__body::-webkit-scrollbar { width: 8px; }
+  .side__body::-webkit-scrollbar-track { background: transparent; }
+  .side__body::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: 4px; }
+
+  /* Report card */
+  .report-card { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; padding: 14px; background: var(--paper); border: 1px solid var(--line-soft); border-radius: var(--radius-md); margin-bottom: 10px; cursor: pointer; transition: all .18s var(--ease); position: relative; }
+  .report-card:hover { border-color: var(--moss-300); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .report-card.is-active { border-color: var(--moss-600); box-shadow: 0 0 0 3px var(--moss-100); }
+  .report-card__thumb { width: 56px; height: 56px; border-radius: 10px; background: var(--sand-200); display: grid; place-items: center; font-size: 24px; position: relative; overflow: hidden; }
+  .report-card__thumb::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(20,36,30,.04) 6px 7px); }
+  .report-card__thumb--basura  { background: color-mix(in oklch, var(--cat-basura) 18%, var(--paper)); }
+  .report-card__thumb--derrame { background: color-mix(in oklch, var(--cat-derrame) 16%, var(--paper)); }
+  .report-card__thumb--quema   { background: color-mix(in oklch, var(--cat-quema) 18%, var(--paper)); }
+  .report-card__thumb--tala    { background: color-mix(in oklch, var(--cat-tala) 14%, var(--paper)); }
+  .report-card__thumb--otro    { background: color-mix(in oklch, var(--cat-otro) 16%, var(--paper)); }
+  .report-card__body { min-width: 0; }
+  .report-card__head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .report-card__cat { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+  .report-card__cat--basura  { color: var(--cat-basura); }
+  .report-card__cat--derrame { color: var(--cat-derrame); }
+  .report-card__cat--quema   { color: var(--cat-quema); }
+  .report-card__cat--tala    { color: var(--cat-tala); }
+  .report-card__cat--otro    { color: var(--cat-otro); }
+  .report-card__desc { font-size: 14px; color: var(--ink-900); line-height: 1.35; margin: 0 0 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .report-card__meta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-500); flex-wrap: wrap; }
+  .report-card__meta svg { width: 11px; height: 11px; }
+  .report-card__meta .sep { color: var(--ink-300); }
+  .report-card__status { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+  .status-pendiente  { background: var(--amber-100); color: #7A540F; }
+  .status-en_proceso { background: var(--sky-100);   color: #1E527A; }
+  .status-resuelto   { background: #D6E9DC; color: var(--moss-800); }
+  .report-card__status .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .list-head { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--ink-500); margin: 6px 4px 10px; display: flex; align-items: center; justify-content: space-between; }
+  .list-head:not(:first-child) { margin-top: 22px; }
+  .list-head__sort { text-transform: none; font-size: 11.5px; letter-spacing: 0; color: var(--moss-700); display: inline-flex; align-items: center; gap: 3px; }
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--ink-500); font-size: 14px; }
+  .empty-state__icon { font-size: 2.5rem; margin-bottom: .75rem; }
+
+  /* ============================================
+     FAB
+     ============================================ */
+  .fab { position: fixed; right: calc(var(--side-w) - 32px); bottom: 28px; z-index: 700; display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px 14px 18px; background: var(--moss-800); color: var(--paper); border-radius: 999px; font-weight: 700; font-size: 14.5px; letter-spacing: .01em; box-shadow: var(--shadow-fab); transition: transform .2s var(--ease-out), background .2s var(--ease); border: 1px solid var(--moss-900); }
+  .fab:hover { background: var(--moss-900); transform: translateY(-2px); }
+  .fab:active { transform: translateY(0); }
+  .fab__plus { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--leaf-500); color: var(--moss-950); font-size: 18px; font-weight: 800; line-height: 1; }
+
+  /* ============================================
+     MODAL
+     ============================================ */
+  .scrim { position: fixed; inset: 0; background: rgba(14,27,22,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); }
+  .scrim.is-open { opacity: 1; pointer-events: auto; }
+  .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -48%) scale(.96); width: min(560px, calc(100vw - 32px)); max-height: min(88vh, 820px); background: var(--paper); border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 1001; opacity: 0; pointer-events: none; transition: opacity .25s var(--ease), transform .3s var(--ease-out); display: flex; flex-direction: column; overflow: hidden; }
+  .modal.is-open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  .modal__head { padding: 22px 24px 16px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+  .modal__title { font-family: var(--font-display); font-size: 28px; line-height: 1.1; color: var(--moss-900); margin: 0; }
+  .modal__title em { font-style: italic; color: var(--clay-500); }
+  .modal__sub { font-size: 13px; color: var(--ink-500); margin-top: 4px; }
+  .modal__close { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-500); background: var(--sand-100); transition: all .15s var(--ease); flex-shrink: 0; }
+  .modal__close:hover { background: var(--sand-200); color: var(--ink-900); }
+  .modal__close svg { width: 16px; height: 16px; }
+  .modal__body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .field { margin-bottom: 20px; }
+  .field__label { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--moss-700); margin-bottom: 8px; }
+  .field__label small { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink-400); font-size: 11.5px; }
+
+  /* Category grid */
+  .cat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .cat-option { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px 10px; background: var(--paper); border: 1.5px solid var(--line-soft); border-radius: var(--radius-md); transition: all .15s var(--ease); text-align: center; }
+  .cat-option:hover { border-color: var(--moss-400); background: var(--moss-50); }
+  .cat-option.is-selected { border-color: var(--moss-700); background: var(--moss-50); box-shadow: 0 0 0 2px var(--moss-100); }
+  .cat-option__icon { font-size: 26px; line-height: 1; filter: saturate(.9); }
+  .cat-option__label { font-size: 11.5px; font-weight: 600; color: var(--ink-700); }
+  .cat-option.is-selected .cat-option__label { color: var(--moss-900); }
+
+  /* Inputs */
+  .input, .textarea { width: 100%; background: var(--paper); border: 1.5px solid var(--line-soft); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 14.5px; color: var(--ink-900); outline: none; transition: border-color .15s var(--ease), box-shadow .15s var(--ease); font-family: inherit; }
+  .input:focus, .textarea:focus { border-color: var(--moss-600); box-shadow: 0 0 0 3px var(--moss-100); }
+  .textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+  .input::placeholder, .textarea::placeholder { color: var(--ink-400); }
+  .char-counter { font-size: 11.5px; color: var(--ink-400); margin-top: 4px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Location */
+  .loc-card { display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--moss-50); border: 1.5px solid var(--moss-100); border-radius: var(--radius-md); }
+  .loc-card__icon { width: 40px; height: 40px; border-radius: 50%; background: var(--moss-700); color: var(--paper); display: grid; place-items: center; flex-shrink: 0; }
+  .loc-card__icon svg { width: 18px; height: 18px; }
+  .loc-card__body { flex: 1; min-width: 0; }
+  .loc-card__addr { font-size: 14px; font-weight: 600; color: var(--moss-900); line-height: 1.3; }
+  .loc-card__coords { font-size: 11.5px; color: var(--ink-500); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .loc-card__edit { font-size: 12.5px; font-weight: 600; color: var(--moss-700); padding: 6px 10px; border-radius: 7px; border: 1px solid var(--moss-300); transition: all .15s var(--ease); flex-shrink: 0; }
+  .loc-card__edit:hover { background: var(--moss-100); }
+
+  /* Location states */
+  .loc-detect-btn { display: flex; flex-direction: column; gap: 10px; }
+  .btn-detect-gps { display: flex; align-items: center; gap: 10px; padding: 14px; background: var(--paper); border: 1.5px solid var(--line-soft); border-radius: var(--radius-md); font-weight: 600; font-size: 14px; color: var(--ink-700); transition: all .15s var(--ease); width: 100%; }
+  .btn-detect-gps:hover { border-color: var(--moss-400); background: var(--moss-50); color: var(--moss-900); }
+  .btn-detect-gps svg { width: 18px; height: 18px; color: var(--moss-600); flex-shrink: 0; }
+  .btn-detect-gps.loading { opacity: .7; cursor: wait; }
+  .loc-manual { display: flex; flex-direction: column; gap: 8px; }
+  .loc-manual-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .loc-manual-note { font-size: 12px; color: var(--ink-500); }
+  .btn-confirm-loc { background: var(--moss-700); color: var(--paper); border: none; padding: 10px 16px; border-radius: var(--radius-sm); font-weight: 700; font-size: 13px; cursor: pointer; transition: background .15s; align-self: flex-start; }
+  .btn-confirm-loc:hover { background: var(--moss-800); }
+
+  /* Photo */
+  .photo-zone { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1.5px dashed var(--line); border-radius: var(--radius-md); background: var(--sand-100); transition: all .15s var(--ease); cursor: pointer; }
+  .photo-zone:hover { border-color: var(--moss-500); background: var(--moss-50); }
+  .photo-zone__icon { width: 48px; height: 48px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line-soft); display: grid; place-items: center; color: var(--moss-700); flex-shrink: 0; }
+  .photo-zone__icon svg { width: 22px; height: 22px; }
+  .photo-zone__body { flex: 1; }
+  .photo-zone__title { font-weight: 600; font-size: 14px; color: var(--ink-900); }
+  .photo-zone__sub { font-size: 12px; color: var(--ink-500); margin-top: 2px; }
+  .photo-preview-wrap { margin-top: 10px; position: relative; display: none; }
+  .photo-preview-wrap img { width: 100%; max-height: 180px; object-fit: cover; border-radius: var(--radius-sm); }
+  .photo-preview-wrap .remove-photo { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; background: rgba(0,0,0,.55); border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 14px; font-weight: 700; transition: background .15s; }
+  .photo-preview-wrap .remove-photo:hover { background: rgba(0,0,0,.75); }
+
+  /* Modal footer */
+  .modal__foot { padding: 16px 24px 22px; border-top: 1px solid var(--line-soft); background: var(--paper); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+  .modal__foot-note { font-size: 11.5px; color: var(--ink-500); display: flex; align-items: center; gap: 6px; }
+  .modal__foot-note svg { width: 12px; height: 12px; }
+  .actions { display: flex; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font-weight: 700; font-size: 14px; transition: all .15s var(--ease); border: 1.5px solid transparent; white-space: nowrap; }
+  .btn--ghost { color: var(--ink-700); background: transparent; border-color: var(--line); }
+  .btn--ghost:hover { background: var(--sand-100); }
+  .btn--primary { background: var(--moss-800); color: var(--paper); box-shadow: 0 2px 0 var(--moss-950); }
+  .btn--primary:hover:not(:disabled) { background: var(--moss-900); }
+  .btn--primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  /* ============================================
+     TOAST
+     ============================================ */
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translate(-50%, 120%); z-index: 1500; display: flex; align-items: center; gap: 12px; padding: 14px 20px 14px 16px; background: var(--moss-900); color: var(--paper); border-radius: 999px; box-shadow: var(--shadow-xl); transition: transform .4s var(--ease-out); max-width: calc(100vw - 32px); }
+  .toast.is-visible { transform: translate(-50%, 0); }
+  .toast--error  { background: #3A1A1A; }
+  .toast--warning { background: #2E2210; }
+  .toast__icon { width: 28px; height: 28px; border-radius: 50%; background: var(--leaf-500); color: var(--moss-950); display: grid; place-items: center; flex-shrink: 0; }
+  .toast--error  .toast__icon { background: var(--ruby-500); color: #fff; }
+  .toast--warning .toast__icon { background: var(--amber-500); color: #fff; }
+  .toast__icon svg { width: 14px; height: 14px; }
+  .toast__body { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .toast__body small { display: block; font-weight: 500; color: var(--moss-300); font-size: 12px; margin-top: 1px; }
+  .toast__close { color: var(--moss-300); padding: 4px; margin-left: 4px; font-weight: 700; }
+
+  /* ============================================
+     RESPONSIVE — mobile
+     ============================================ */
+  @media (max-width: 880px) {
+    .main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: 78vh; max-height: 78vh; border-left: none; border-top: 1px solid var(--line-soft); border-radius: var(--radius-xl) var(--radius-xl) 0 0; transform: translateY(calc(100% - var(--bottom-collapsed))); transition: transform .4s var(--ease-out); box-shadow: var(--shadow-xl); z-index: 800; }
+    .side.is-expanded { transform: translateY(0); }
+    .side__handle { display: flex !important; justify-content: center; padding: 8px 0 0; cursor: grab; }
+    .side__handle::before { content: ""; width: 44px; height: 5px; background: var(--line); border-radius: 999px; }
+    .side__header { padding-top: 6px; }
+    .fab { right: 16px; bottom: calc(var(--bottom-collapsed) + 16px); }
+    .header { padding: 0 14px; }
+    .header__chip { display: none; }
+    .brand__tag { display: none; }
+    .map-overlay { top: 12px; left: 12px; }
+    .search { width: calc(100vw - 84px); }
+    .map-controls { top: 12px; right: 12px; }
+    .filter-bar { padding: 6px; }
+    .map-stats { display: none; }
+    .modal { width: 100vw; max-height: 92vh; border-radius: var(--radius-xl) var(--radius-xl) 0 0; top: auto; bottom: 0; left: 0; transform: translate(0, 100%); }
+    .modal.is-open { transform: translate(0, 0); }
+    .cat-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .cat-option { padding: 10px 4px 8px; }
+    .cat-option__icon { font-size: 22px; }
+    .cat-option__label { font-size: 10.5px; }
+  }
+  .side__handle { display: none; }
+  @media (max-width: 380px) {
+    .cat-grid { grid-template-columns: repeat(3, 1fr); }
+    .modal__title { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true"></div>
+      <div class="brand__text">
+        <div class="brand__name">EcoReporte <em>Ciudadano</em></div>
+        <div class="brand__tag">ODS 13 · Acción climática</div>
+      </div>
+    </div>
+    <nav class="header__nav">
+      <span class="header__chip" id="headerChip"><span class="dot"></span> Cargando…</span>
+      <button class="header__btn" aria-label="Refrescar" title="Actualizar reportes" onclick="cargarReportes()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <button class="header__btn" aria-label="Ayuda" title="Ayuda" onclick="showToast('EcoReporte Ciudadano','Reporta problemas ambientales con foto y GPS','success')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- MAP -->
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Buscar municipio, categoría…" />
+          <span class="search__kbd">⌘ K</span>
+        </div>
+        <div class="filter-bar" role="tablist" aria-label="Filtros por categoría">
+          <button class="filter-chip is-active" data-filter="all">Todos <span class="filter-chip__count" id="countAll">·</span></button>
+          <button class="filter-chip" data-filter="basura"><span class="filter-chip__dot" style="background:var(--cat-basura)"></span>Basura</button>
+          <button class="filter-chip" data-filter="derrame"><span class="filter-chip__dot" style="background:var(--cat-derrame)"></span>Derrame</button>
+          <button class="filter-chip" data-filter="quema"><span class="filter-chip__dot" style="background:var(--cat-quema)"></span>Quema</button>
+          <button class="filter-chip" data-filter="tala"><span class="filter-chip__dot" style="background:var(--cat-tala)"></span>Tala</button>
+        </div>
+      </div>
+
+      <div class="map-controls">
+        <div class="map-btn--group">
+          <button id="zoomIn" aria-label="Acercar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button id="zoomOut" aria-label="Alejar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <button class="map-btn" id="locateMe" aria-label="Mi ubicación" title="Centrar en mi ubicación">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+        </button>
+        <button class="map-btn" id="layerBtn" aria-label="Cambiar mapa" title="Cambiar capa del mapa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 12 15 2 8.5 12 2"/><polyline points="2 15.5 12 22 22 15.5"/></svg>
+        </button>
+      </div>
+
+      <div class="map-stats" id="mapStats">
+        <div>
+          <div class="map-stat__num" id="statTotal">—</div>
+          <div class="map-stat__label">Reportes totales</div>
+        </div>
+        <div class="map-stat__divider"></div>
+        <div>
+          <div class="map-stat__num" id="statResueltos" style="color:var(--moss-500)">—</div>
+          <div class="map-stat__label">Resueltos</div>
+        </div>
+        <div class="map-stat__divider"></div>
+        <div>
+          <div class="map-stat__num" id="statMunicipios" style="color:var(--clay-500)">—</div>
+          <div class="map-stat__label">Municipios</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDE PANEL -->
+    <aside class="side" id="sidePanel">
+      <div class="side__handle" id="sideHandle" aria-label="Arrastrar para expandir"></div>
+      <div class="side__header">
+        <div class="side__eyebrow">Vista cívica · Jalisco, México</div>
+        <h2 class="side__title">Reportes <em>recientes</em></h2>
+        <div class="side__tabs" role="tablist">
+          <button class="side__tab is-active" data-tab="recientes">Recientes <span id="tabCountRecientes">0</span></button>
+          <button class="side__tab" data-tab="cercanos">Cerca de mí <span id="tabCountCercanos">—</span></button>
+          <button class="side__tab" data-tab="mios">Mis reportes <span id="tabCountMios">0</span></button>
+        </div>
+      </div>
+      <div class="side__body" id="reportsList">
+        <div class="empty-state"><div class="empty-state__icon">🌿</div>Cargando reportes…</div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" id="openModalBtn" aria-label="Crear nuevo reporte">
+    <span class="fab__plus">+</span>
+    Nuevo reporte
+  </button>
+</div>
+
+<!-- MODAL -->
+<div class="scrim" id="scrim"></div>
+<div class="modal" id="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+  <div class="modal__head">
+    <div>
+      <h2 class="modal__title" id="modalTitle">Reporta lo que <em>observas</em></h2>
+      <p class="modal__sub">Tu reporte es anónimo y se envía directamente al mapa público.</p>
+    </div>
+    <button class="modal__close" id="closeModalBtn" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+    </button>
+  </div>
+
+  <form class="modal__body" id="reportForm" autocomplete="off" onsubmit="return false">
+    <!-- Categoría -->
+    <div class="field">
+      <label class="field__label">¿Qué observaste? <small>Selecciona una categoría</small></label>
+      <div class="cat-grid">
+        <button type="button" class="cat-option" data-cat="basura"><span class="cat-option__icon">🗑️</span><span class="cat-option__label">Basura</span></button>
+        <button type="button" class="cat-option" data-cat="derrame"><span class="cat-option__icon">💧</span><span class="cat-option__label">Derrame</span></button>
+        <button type="button" class="cat-option" data-cat="quema"><span class="cat-option__icon">🔥</span><span class="cat-option__label">Quema</span></button>
+        <button type="button" class="cat-option" data-cat="tala"><span class="cat-option__icon">🌳</span><span class="cat-option__label">Tala</span></button>
+        <button type="button" class="cat-option" data-cat="otro"><span class="cat-option__icon">❓</span><span class="cat-option__label">Otro</span></button>
+      </div>
+    </div>
+
+    <!-- Descripción -->
+    <div class="field">
+      <label class="field__label" for="descInput">Descripción <small>Detalles que ayuden a entender el problema</small></label>
+      <textarea class="textarea" id="descInput" maxlength="280" placeholder="Ej.: Bolsas de basura acumuladas en la esquina desde hace 3 días. Mal olor y fauna nociva."></textarea>
+      <div class="char-counter"><span id="charCount">0</span>/280</div>
+    </div>
+
+    <!-- Municipio -->
+    <div class="field">
+      <label class="field__label" for="municipioInput">Municipio <small>Opcional</small></label>
+      <input type="text" class="input" id="municipioInput" placeholder="Ej.: Guadalajara" maxlength="100" />
+    </div>
+
+    <!-- Ubicación -->
+    <div class="field">
+      <label class="field__label">Ubicación <small>Requerida</small></label>
+
+      <!-- Estado: sin ubicación / detectando -->
+      <div id="locDetectArea" class="loc-detect-btn">
+        <button type="button" class="btn-detect-gps" id="btnDetectGps">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+          <span id="btnDetectGpsText">Detectar mi ubicación por GPS</span>
+        </button>
+        <p style="font-size:12px;color:var(--ink-400);text-align:center;margin:0">
+          — o ingresa las coordenadas manualmente —
+        </p>
+        <div class="loc-manual">
+          <div class="loc-manual-row">
+            <input type="number" class="input" id="inpLat" placeholder="Latitud (ej: 20.6597)" step="any">
+            <input type="number" class="input" id="inpLng" placeholder="Longitud (ej: -103.3496)" step="any">
+          </div>
+          <button type="button" class="btn-confirm-loc" id="btnConfirmLoc">✓ Usar estas coordenadas</button>
+        </div>
+      </div>
+
+      <!-- Estado: ubicación confirmada -->
+      <div id="locCardArea" style="display:none">
+        <div class="loc-card">
+          <div class="loc-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div class="loc-card__body">
+            <div class="loc-card__addr" id="locAddr">Detectando…</div>
+            <div class="loc-card__coords" id="locCoords"></div>
+          </div>
+          <button type="button" class="loc-card__edit" id="btnAjustar">Cambiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Foto -->
+    <div class="field">
+      <label class="field__label">Foto <small>Opcional · Máx. 10 MB</small></label>
+      <label class="photo-zone" for="photoInput">
+        <div class="photo-zone__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <div class="photo-zone__body">
+          <div class="photo-zone__title">Toca para tomar o subir una foto</div>
+          <div class="photo-zone__sub">JPG, PNG o HEIC · Máx. 10 MB</div>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+      </label>
+      <div class="photo-preview-wrap" id="photoPreviewWrap">
+        <img id="photoPreview" src="" alt="Vista previa" />
+        <button type="button" class="remove-photo" id="removePhoto" title="Quitar foto">✕</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="modal__foot">
+    <span class="modal__foot-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Identidad protegida
+    </span>
+    <div class="actions">
+      <button class="btn btn--ghost" type="button" id="cancelBtn">Cancelar</button>
+      <button class="btn btn--primary" type="button" id="submitBtn" disabled>Enviar reporte</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="toast__icon" id="toastIcon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  </span>
+  <div class="toast__body" id="toastBody">—</div>
+  <button class="toast__close" id="toastClose">✕</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN — setup.py reemplaza %%API_URL%% con la URL real
+   ============================================================ */
+const API_URL = "%%API_URL%%";
+
+/* ============================================================
+   CATEGORÍAS Y STATUS
+   ============================================================ */
+const CATEGORIAS = {
+  basura : { label: "Basura",   icon: "🗑️", color: "#6B5E4C" },
+  derrame: { label: "Derrame",  icon: "💧", color: "#3B82B5" },
+  quema  : { label: "Quema",   icon: "🔥", color: "#C45A2E" },
+  tala   : { label: "Tala",    icon: "🌳", color: "#2B5345" },
+  otro   : { label: "Otro",    icon: "❓", color: "#7A5B8E" },
+};
+
+const STATUS_MAP = {
+  pendiente : { label: "Pendiente",   cls: "status-pendiente"  },
+  en_proceso: { label: "En proceso",  cls: "status-en_proceso" },
+  resuelto  : { label: "Resuelto",    cls: "status-resuelto"   },
+};
+
+/* ============================================================
+   ESTADO
+   ============================================================ */
+const state = {
+  reportes   : [],
+  filtro     : "all",
+  searchQuery: "",
+  activeTab  : "recientes",
+  userLat    : null,
+  userLng    : null,
+  formCat    : null,
+  formLat    : null,
+  formLng    : null,
+  misIds     : JSON.parse(localStorage.getItem("ecoreporte_mis_ids") || "[]"),
+  markers    : [],
+  activeCard : null,
+  tileIdx    : 0,
+};
+
+/* ============================================================
+   MAPA
+   ============================================================ */
+const GDL = [20.6597, -103.3496];
+
+const map = L.map("map", { zoomControl: false, attributionControl: true }).setView(GDL, 12);
+
+const TILES = [
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: "© OpenStreetMap · © CARTO", maxZoom: 19, subdomains: "abcd",
+  }),
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "© OpenStreetMap · © CARTO", maxZoom: 19, subdomains: "abcd",
+  }),
+];
+TILES[0].addTo(map);
+
+const layerGroup = L.layerGroup().addTo(map);
+
+function crearPinIcon(cat) {
+  const info = CATEGORIAS[cat] || CATEGORIAS.otro;
+  return L.divIcon({
+    html: `<div class="pin pin--${cat}"><div class="pin__body"><div class="pin__icon">${info.icon}</div></div></div>`,
+    className: "",
+    iconSize: [34, 38], iconAnchor: [17, 36], popupAnchor: [0, -34],
+  });
+}
+
+function renderMapa() {
+  layerGroup.clearLayers();
+  state.markers = [];
+  const visibles = reportesFiltrados();
+  visibles.forEach(r => {
+    const lat = parseFloat(r.latitud);
+    const lng = parseFloat(r.longitud);
+    if (isNaN(lat) || isNaN(lng)) return;
+    const cat = CATEGORIAS[r.categoria] || CATEGORIAS.otro;
+    const st  = STATUS_MAP[r.status] || STATUS_MAP.pendiente;
+    const marker = L.marker([lat, lng], { icon: crearPinIcon(r.categoria) });
+    const fotoHtml = r.foto_url
+      ? `<img class="popup__photo" src="${r.foto_url}" alt="Foto" onerror="this.style.display='none'">`
+      : "";
+    const fecha = formatFecha(r.fecha_creacion);
+    marker.bindPopup(`
+      <div class="popup">
+        <span class="popup__cat" style="color:${cat.color}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block"></span>
+          ${cat.label}
+        </span>
+        <div class="popup__title">${(r.descripcion || "").slice(0, 70)}${(r.descripcion || "").length > 70 ? "…" : ""}</div>
+        ${fotoHtml}
+        <div class="popup__meta">📍 ${r.municipio || "—"} · ${fecha}</div>
+        <span class="popup__status ${st.cls}"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;margin-right:4px"></span>${st.label}</span>
+      </div>`);
+    marker._reporteId = r.reporte_id;
+    marker._cat = r.categoria;
+    marker.on("click", () => activarCard(r.reporte_id));
+    layerGroup.addLayer(marker);
+    state.markers.push(marker);
+  });
+}
+
+/* ============================================================
+   API
+   ============================================================ */
+async function cargarReportes() {
+  try {
+    const res  = await fetch(`${API_URL}/reportes`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.reportes = data.reportes || [];
+    renderMapa();
+    renderLista();
+    renderStats();
+  } catch (err) {
+    console.error("Error cargando reportes:", err);
+    showToast("Sin conexión a la API", "Verifica que setup.py se ejecutó correctamente", "error");
+  }
+}
+
+async function crearReporte(datos, archivo) {
+  const res = await fetch(`${API_URL}/reportes`, {
+    method : "POST",
+    headers: { "Content-Type": "application/json" },
+    body   : JSON.stringify(datos),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+  // Subir foto directamente a S3 si hay una seleccionada
+  if (archivo && data.presigned_url) {
+    try {
+      await fetch(data.presigned_url, {
+        method : "PUT",
+        body   : archivo,
+        headers: { "Content-Type": "image/jpeg" },
+      });
+    } catch (e) {
+      console.warn("Foto no pudo subirse:", e);
+    }
+  }
+
+  // Guardar ID en localStorage para tab "Mis reportes"
+  state.misIds.unshift(data.reporte_id);
+  localStorage.setItem("ecoreporte_mis_ids", JSON.stringify(state.misIds.slice(0, 50)));
+
+  return data;
+}
+
+async function actualizarStatus(reporteId, nuevoStatus) {
+  const res = await fetch(`${API_URL}/reportes/${reporteId}/status`, {
+    method : "PUT",
+    headers: { "Content-Type": "application/json" },
+    body   : JSON.stringify({ status: nuevoStatus }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+/* ============================================================
+   FILTROS Y BÚSQUEDA
+   ============================================================ */
+function reportesFiltrados() {
+  let lista = state.reportes;
+  if (state.filtro !== "all") lista = lista.filter(r => r.categoria === state.filtro);
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    lista = lista.filter(r =>
+      (r.descripcion  || "").toLowerCase().includes(q) ||
+      (r.municipio    || "").toLowerCase().includes(q) ||
+      (r.categoria    || "").toLowerCase().includes(q)
+    );
+  }
+  return lista;
+}
+
+function reportesPorTab() {
+  const todos = reportesFiltrados();
+  if (state.activeTab === "mios") {
+    return todos.filter(r => state.misIds.includes(r.reporte_id));
+  }
+  if (state.activeTab === "cercanos" && state.userLat !== null) {
+    return [...todos].sort((a, b) =>
+      distancia(state.userLat, state.userLng, parseFloat(a.latitud), parseFloat(a.longitud)) -
+      distancia(state.userLat, state.userLng, parseFloat(b.latitud), parseFloat(b.longitud))
+    );
+  }
+  return todos;
+}
+
+/* ============================================================
+   RENDER — LISTA LATERAL
+   ============================================================ */
+function renderLista() {
+  const lista = reportesPorTab();
+  const el    = document.getElementById("reportsList");
+
+  // Actualizar contadores de tabs
+  document.getElementById("tabCountRecientes").textContent = reportesFiltrados().length;
+  const misCount = reportesFiltrados().filter(r => state.misIds.includes(r.reporte_id)).length;
+  document.getElementById("tabCountMios").textContent = misCount;
+  document.getElementById("tabCountCercanos").textContent =
+    state.userLat ? reportesFiltrados().length : "?";
+
+  if (lista.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🌿</div>
+      ${state.activeTab === "mios"
+        ? "Aún no has creado ningún reporte.<br>¡Sé el primero en tu colonia!"
+        : "No hay reportes con estos filtros."}</div>`;
+    return;
+  }
+
+  const hoy       = new Date().toDateString();
+  const deHoy     = lista.filter(r => new Date(r.fecha_creacion).toDateString() === hoy);
+  const anteriores = lista.filter(r => new Date(r.fecha_creacion).toDateString() !== hoy);
+
+  let html = "";
+  if (deHoy.length) {
+    html += `<div class="list-head">Hoy <span class="list-head__sort">Más recientes ↓</span></div>`;
+    html += deHoy.map(reportCard).join("");
+  }
+  if (anteriores.length) {
+    html += `<div class="list-head">Anteriores</div>`;
+    html += anteriores.map(reportCard).join("");
+  }
+  el.innerHTML = html;
+
+  el.querySelectorAll(".report-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const id = card.dataset.id;
+      activarCard(id);
+      const marker = state.markers.find(m => m._reporteId === id);
+      if (marker) {
+        map.flyTo(marker.getLatLng(), 16, { duration: 0.9 });
+        marker.openPopup();
+      }
+    });
+  });
+}
+
+function reportCard(r) {
+  const cat = CATEGORIAS[r.categoria] || CATEGORIAS.otro;
+  const st  = STATUS_MAP[r.status]   || STATUS_MAP.pendiente;
+  const fecha = formatFecha(r.fecha_creacion);
+  const activo = state.activeCard === r.reporte_id ? " is-active" : "";
+  return `
+  <article class="report-card${activo}" data-id="${r.reporte_id}">
+    <div class="report-card__thumb report-card__thumb--${r.categoria}">
+      <span style="position:relative;z-index:2">${cat.icon}</span>
+    </div>
+    <div class="report-card__body">
+      <div class="report-card__head">
+        <span class="report-card__cat report-card__cat--${r.categoria}">${cat.label}</span>
+        <span style="font-size:11px;color:var(--ink-400)">${r.municipio || ""}</span>
+      </div>
+      <p class="report-card__desc">${r.descripcion || "Sin descripción"}</p>
+      <div class="report-card__meta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        ${r.municipio || "—"}
+        <span class="sep">·</span>
+        ${fecha}
+      </div>
+    </div>
+    <span class="report-card__status ${st.cls}">
+      <span class="dot"></span>${st.label}
+    </span>
+  </article>`;
+}
+
+function activarCard(id) {
+  state.activeCard = id;
+  document.querySelectorAll(".report-card").forEach(c => {
+    c.classList.toggle("is-active", c.dataset.id === id);
+  });
+}
+
+function renderStats() {
+  const total     = state.reportes.length;
+  const resueltos = state.reportes.filter(r => r.status === "resuelto").length;
+  const municipios = new Set(state.reportes.map(r => r.municipio).filter(Boolean)).size;
+  const estesMes  = state.reportes.filter(r => {
+    const f = new Date(r.fecha_creacion);
+    const n = new Date();
+    return f.getFullYear() === n.getFullYear() && f.getMonth() === n.getMonth();
+  }).length;
+
+  document.getElementById("statTotal").textContent = total;
+  document.getElementById("statResueltos").textContent = resueltos;
+  document.getElementById("statMunicipios").textContent = municipios;
+  document.getElementById("countAll").textContent = total;
+  document.getElementById("headerChip").innerHTML =
+    `<span class="dot"></span> ${estesMes} reporte${estesMes !== 1 ? "s" : ""} este mes`;
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function formatFecha(iso) {
+  if (!iso) return "—";
+  const d   = new Date(iso);
+  const now = new Date();
+  const ms  = now - d;
+  if (ms < 60000)          return "Hace un momento";
+  if (ms < 3600000)        return `Hace ${Math.floor(ms / 60000)} min`;
+  if (ms < 86400000)       return `Hace ${Math.floor(ms / 3600000)} h`;
+  if (ms < 172800000)      return "Ayer";
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+}
+
+function distancia(lat1, lng1, lat2, lng2) {
+  if (isNaN(lat2) || isNaN(lng2)) return Infinity;
+  const R  = 6371;
+  const dL = (lat2 - lat1) * Math.PI / 180;
+  const dG = (lng2 - lng1) * Math.PI / 180;
+  const a  = Math.sin(dL/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dG/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`;
+    const res = await fetch(url);
+    const d   = await res.json();
+    // Construir dirección legible
+    const a = d.address || {};
+    const partes = [a.road, a.suburb || a.neighbourhood, a.city || a.town || a.municipality].filter(Boolean);
+    return partes.join(", ") || d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } catch {
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+
+/* ============================================================
+   MODAL — UBICACIÓN
+   ============================================================ */
+function setLocState(estado) {
+  const detectArea = document.getElementById("locDetectArea");
+  const cardArea   = document.getElementById("locCardArea");
+  const btn        = document.getElementById("btnDetectGps");
+  const btnText    = document.getElementById("btnDetectGpsText");
+
+  if (estado === "loading") {
+    detectArea.style.display = "flex";
+    cardArea.style.display   = "none";
+    btn.classList.add("loading");
+    btn.disabled = true;
+    btnText.textContent = "Detectando ubicación…";
+  } else if (estado === "detected") {
+    detectArea.style.display = "none";
+    cardArea.style.display   = "block";
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    btnText.textContent = "Detectar mi ubicación por GPS";
+  } else {
+    detectArea.style.display = "flex";
+    cardArea.style.display   = "none";
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    btnText.textContent = "Detectar mi ubicación por GPS";
+  }
+  validarForm();
+}
+
+function mostrarUbicacion(lat, lng, addr, accuracy) {
+  document.getElementById("locAddr").textContent   = addr;
+  document.getElementById("locCoords").textContent =
+    `${Math.abs(lat).toFixed(5)}° ${lat >= 0 ? "N" : "S"} · ${Math.abs(lng).toFixed(5)}° ${lng >= 0 ? "E" : "O"}${accuracy ? ` · ±${Math.round(accuracy)}m` : ""}`;
+  state.formLat = lat;
+  state.formLng = lng;
+  setLocState("detected");
+}
+
+async function detectarUbicacion() {
+  if (!navigator.geolocation) {
+    showToast("GPS no disponible", "Ingresa las coordenadas manualmente", "warning");
+    return;
+  }
+  setLocState("loading");
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      const addr = await reverseGeocode(lat, lng);
+      mostrarUbicacion(lat, lng, addr, accuracy);
+    },
+    err => {
+      setLocState("manual");
+      showToast("No se pudo obtener GPS", "Ingresa las coordenadas manualmente", "warning");
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+/* ============================================================
+   MODAL — FOTO
+   ============================================================ */
+function previsualizarFoto(file) {
+  const DIEZ_MB = 10 * 1024 * 1024;
+  if (!file.type.startsWith("image/")) {
+    showToast("Tipo de archivo no válido", "Solo se aceptan imágenes (JPG, PNG, HEIC)", "error");
+    document.getElementById("photoInput").value = "";
+    return;
+  }
+  if (file.size > DIEZ_MB) {
+    showToast("Foto demasiado grande", `El archivo pesa ${(file.size/1024/1024).toFixed(1)} MB. Máximo 10 MB.`, "error");
+    document.getElementById("photoInput").value = "";
+    return;
+  }
+  const wrap = document.getElementById("photoPreviewWrap");
+  document.getElementById("photoPreview").src = URL.createObjectURL(file);
+  wrap.style.display = "block";
+}
+
+/* ============================================================
+   MODAL — VALIDACIÓN Y ENVÍO
+   ============================================================ */
+function validarForm() {
+  const ok = state.formCat && document.getElementById("descInput").value.trim().length >= 10
+             && state.formLat !== null && state.formLng !== null;
+  document.getElementById("submitBtn").disabled = !ok;
+}
+
+function resetForm() {
+  state.formCat = null;
+  state.formLat = null;
+  state.formLng = null;
+  document.getElementById("descInput").value   = "";
+  document.getElementById("municipioInput").value = "";
+  document.getElementById("charCount").textContent = "0";
+  document.getElementById("photoInput").value  = "";
+  document.getElementById("photoPreviewWrap").style.display = "none";
+  document.querySelectorAll(".cat-option").forEach(o => o.classList.remove("is-selected"));
+  setLocState("initial");
+  validarForm();
+}
+
+async function enviarReporte() {
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Enviando…";
+
+  try {
+    const archivo = document.getElementById("photoInput").files[0] || null;
+    const datos   = {
+      categoria   : state.formCat,
+      descripcion : document.getElementById("descInput").value.trim(),
+      latitud     : state.formLat,
+      longitud    : state.formLng,
+      municipio   : document.getElementById("municipioInput").value.trim() || "Desconocido",
+    };
+    const respuesta = await crearReporte(datos, archivo);
+    closeModal();
+    showToast("Reporte enviado", `ID ${respuesta.reporte_id.slice(0, 8)}… · Gracias por cuidar el medio ambiente`, "success");
+    await cargarReportes();
+  } catch (err) {
+    showToast("No se pudo enviar", err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Enviar reporte";
+  }
+}
+
+/* ============================================================
+   MODAL — ABRIR / CERRAR
+   ============================================================ */
+function openModal() {
+  document.getElementById("scrim").classList.add("is-open");
+  document.getElementById("modal").classList.add("is-open");
+  document.body.style.overflow = "hidden";
+  // Intentar detectar GPS automáticamente al abrir
+  detectarUbicacion();
+}
+function closeModal() {
+  document.getElementById("scrim").classList.remove("is-open");
+  document.getElementById("modal").classList.remove("is-open");
+  document.body.style.overflow = "";
+  resetForm();
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer;
+function showToast(titulo, subtitulo = "", tipo = "success") {
+  const el   = document.getElementById("toast");
+  const body = document.getElementById("toastBody");
+  el.className = `toast${tipo !== "success" ? ` toast--${tipo}` : ""}`;
+  body.innerHTML = titulo + (subtitulo ? `<small>${subtitulo}</small>` : "");
+  el.classList.add("is-visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("is-visible"), 5000);
+}
+
+/* ============================================================
+   FILTROS / CHIPS
+   ============================================================ */
+function aplicarFiltro(filtro) {
+  state.filtro = filtro;
+  document.querySelectorAll(".filter-chip").forEach(c => {
+    c.classList.toggle("is-active", c.dataset.filter === filtro);
+  });
+  renderMapa();
+  renderLista();
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+function cambiarTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll(".side__tab").forEach(t =>
+    t.classList.toggle("is-active", t.dataset.tab === tab)
+  );
+  renderLista();
+}
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+// Filtros
+document.querySelectorAll(".filter-chip").forEach(chip =>
+  chip.addEventListener("click", () => aplicarFiltro(chip.dataset.filter))
+);
+
+// Tabs
+document.querySelectorAll(".side__tab").forEach(t =>
+  t.addEventListener("click", () => cambiarTab(t.dataset.tab))
+);
+
+// Modal
+document.getElementById("openModalBtn").onclick = openModal;
+document.getElementById("closeModalBtn").onclick = closeModal;
+document.getElementById("cancelBtn").onclick     = closeModal;
+document.getElementById("scrim").onclick          = closeModal;
+document.getElementById("submitBtn").onclick      = enviarReporte;
+
+// Cerrar con Esc
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.getElementById("modal").classList.contains("is-open")) closeModal();
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    e.preventDefault();
+    document.getElementById("searchInput").focus();
+  }
+});
+
+// Categoría en form
+document.querySelectorAll(".cat-option").forEach(opt =>
+  opt.addEventListener("click", () => {
+    document.querySelectorAll(".cat-option").forEach(o => o.classList.remove("is-selected"));
+    opt.classList.add("is-selected");
+    state.formCat = opt.dataset.cat;
+    validarForm();
+  })
+);
+
+// Descripción
+document.getElementById("descInput").addEventListener("input", e => {
+  document.getElementById("charCount").textContent = e.target.value.length;
+  validarForm();
+});
+
+// GPS
+document.getElementById("btnDetectGps").onclick = detectarUbicacion;
+
+// Confirmar ubicación manual
+document.getElementById("btnConfirmLoc").onclick = async () => {
+  const lat = parseFloat(document.getElementById("inpLat").value);
+  const lng = parseFloat(document.getElementById("inpLng").value);
+  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    showToast("Coordenadas inválidas", "Ingresa valores numéricos correctos", "error");
+    return;
+  }
+  const addr = await reverseGeocode(lat, lng);
+  mostrarUbicacion(lat, lng, addr, null);
+};
+
+// Volver a cambiar ubicación
+document.getElementById("btnAjustar").onclick = () => setLocState("initial");
+
+// Foto
+document.getElementById("photoInput").addEventListener("change", e => {
+  if (e.target.files[0]) previsualizarFoto(e.target.files[0]);
+});
+document.getElementById("removePhoto").onclick = e => {
+  e.stopPropagation();
+  document.getElementById("photoInput").value = "";
+  document.getElementById("photoPreviewWrap").style.display = "none";
+  URL.revokeObjectURL(document.getElementById("photoPreview").src);
+};
+
+// Búsqueda
+document.getElementById("searchInput").addEventListener("input", e => {
+  state.searchQuery = e.target.value.trim();
+  renderMapa();
+  renderLista();
+});
+
+// Zoom y mapa
+document.getElementById("zoomIn").onclick   = () => map.zoomIn();
+document.getElementById("zoomOut").onclick  = () => map.zoomOut();
+document.getElementById("locateMe").onclick = () => {
+  if (state.userLat) {
+    map.flyTo([state.userLat, state.userLng], 15, { duration: 0.8 });
+  } else {
+    navigator.geolocation?.getCurrentPosition(pos => {
+      state.userLat = pos.coords.latitude;
+      state.userLng = pos.coords.longitude;
+      map.flyTo([state.userLat, state.userLng], 15, { duration: 0.8 });
+    });
+  }
+};
+document.getElementById("layerBtn").onclick = () => {
+  TILES[state.tileIdx].remove();
+  state.tileIdx = (state.tileIdx + 1) % TILES.length;
+  TILES[state.tileIdx].addTo(map);
+};
+
+// Bottom sheet (mobile)
+const sidePanel = document.getElementById("sidePanel");
+const sideHandle = document.getElementById("sideHandle");
+let isExpanded = false, dragStartY = null;
+function toggleSheet(expand) { isExpanded = expand; sidePanel.classList.toggle("is-expanded", expand); }
+sideHandle.addEventListener("click", () => toggleSheet(!isExpanded));
+sideHandle.addEventListener("touchstart", e => { dragStartY = e.touches[0].clientY; }, { passive: true });
+sideHandle.addEventListener("touchend", e => {
+  if (dragStartY === null) return;
+  const dy = e.changedTouches[0].clientY - dragStartY;
+  if (dy < -30) toggleSheet(true); else if (dy > 30) toggleSheet(false);
+  dragStartY = null;
+});
+sidePanel.addEventListener("click", e => {
+  if (window.innerWidth <= 880 && !isExpanded && e.target !== sideHandle) toggleSheet(true);
+});
+
+// Toast close
+document.getElementById("toastClose").onclick = () =>
+  document.getElementById("toast").classList.remove("is-visible");
+
+/* ============================================================
+   INICIALIZACIÓN
+   ============================================================ */
+if (API_URL === "%%API_URL%%") {
+  console.warn("⚠️ API_URL no configurada. Ejecuta scripts/setup.py para desplegar.");
+  document.getElementById("reportsList").innerHTML =
+    `<div class="empty-state"><div class="empty-state__icon">⚙️</div>
+    La API no está configurada.<br>Ejecuta <code>python3 scripts/setup.py</code> para desplegar.</div>`;
+} else {
+  cargarReportes();
+  setInterval(cargarReportes, 60_000);
+}
+
+// Obtener ubicación del usuario en segundo plano para tab "Cerca de mí"
+navigator.geolocation?.getCurrentPosition(pos => {
+  state.userLat = pos.coords.latitude;
+  state.userLng = pos.coords.longitude;
+  document.getElementById("tabCountCercanos").textContent = reportesFiltrados().length;
+}, () => {}, { enableHighAccuracy: false });
+</script>
+</body>
+</html>

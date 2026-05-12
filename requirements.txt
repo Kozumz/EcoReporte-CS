@@ -1,0 +1,9 @@
+# Dependencias del proyecto EcoReporte Ciudadano
+# Instalar con: pip install -r requirements.txt
+
+# AWS SDK para Python — infraestructura, Lambdas y scripts
+boto3>=1.34.0
+botocore>=1.34.0
+
+# HTTP requests — usado en resiliencia.py para probar la API
+requests>=2.31.0
