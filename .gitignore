@@ -4,6 +4,7 @@
 
 # ─── Credenciales y entorno ────────────────────────────────
 .env*
+.claude
 *.pem
 *.key
 
